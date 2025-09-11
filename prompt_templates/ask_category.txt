@@ -1,0 +1,2 @@
+Ask the user about their need for medicine, ask nicely, and be patient. Making sure the user's need only falls into these category:
+1. 

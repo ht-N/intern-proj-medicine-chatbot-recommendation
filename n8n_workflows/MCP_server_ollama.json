@@ -1,0 +1,200 @@
+{
+  "name": "MCP_server",
+  "nodes": [
+    {
+      "parameters": {
+        "path": "htn-mcp"
+      },
+      "type": "@n8n/n8n-nodes-langchain.mcpTrigger",
+      "typeVersion": 2,
+      "position": [
+        -416,
+        336
+      ],
+      "id": "2d7ccb25-a99f-449e-a819-3a2219394aed",
+      "name": "MCP Server Trigger",
+      "webhookId": "16424b13-11db-4e28-82c1-56fb23067e73"
+    },
+    {
+      "parameters": {
+        "mode": "retrieve-as-tool",
+        "toolDescription": "Looking for products for customer.",
+        "qdrantCollection": {
+          "__rl": true,
+          "value": "rag-medicine",
+          "mode": "id"
+        },
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.vectorStoreQdrant",
+      "typeVersion": 1.3,
+      "position": [
+        -704,
+        560
+      ],
+      "id": "d183ae12-d018-41ae-a990-974092ebe39d",
+      "name": "MedicineRAG",
+      "credentials": {
+        "qdrantApi": {
+          "id": "txgudyUaUXbLbTDH",
+          "name": "QdrantApi account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "description": "Calculate the applied promotion/discount price for an item",
+        "language": "python",
+        "pythonCode": "results = []\n\n# Dùng to_py() để convert JsProxy -> Python dict\nfor _item in _items.to_py():\n    price = _item[\"json\"][\"price\"]\n    discount_percentage = _item[\"json\"][\"discount_percentage\"]\n\n    # Nếu discount là chuỗi \"5%\" thì xử lý\n    if isinstance(discount_percentage, str) and discount_percentage.endswith(\"%\"):\n        discount_percentage = float(discount_percentage.replace(\"%\", \"\"))\n    else:\n        discount_percentage = float(discount_percentage)\n\n    discount_price = price - (price * (discount_percentage / 100))\n\n    results.append({\n        \"json\": {\n            \"price\": price,\n            \"discount_percentage\": discount_percentage,\n            \"discount_price\": discount_price\n        }\n    })\n\nreturn results\n",
+        "specifyInputSchema": true,
+        "jsonSchemaExample": "{\n\t\"price\": 30,\n    \"discount_percentage\": 5\n}"
+      },
+      "type": "@n8n/n8n-nodes-langchain.toolCode",
+      "typeVersion": 1.3,
+      "position": [
+        -128,
+        560
+      ],
+      "id": "ce0c9554-3179-4667-a3e6-f36a0de69925",
+      "name": "DiscountPrice"
+    },
+    {
+      "parameters": {
+        "model": "mxbai-embed-large:latest"
+      },
+      "type": "@n8n/n8n-nodes-langchain.embeddingsOllama",
+      "typeVersion": 1,
+      "position": [
+        -704,
+        736
+      ],
+      "id": "386c869f-f5f7-4716-b8f2-858f1c0a53ff",
+      "name": "Embeddings Ollama",
+      "credentials": {
+        "ollamaApi": {
+          "id": "WoDmrwBfMygWnhYW",
+          "name": "Ollama account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "mode": "retrieve-as-tool",
+        "toolDescription": "Get information about current discount, promotion...",
+        "qdrantCollection": {
+          "__rl": true,
+          "value": "rag-promotion",
+          "mode": "list",
+          "cachedResultName": "rag-promotion"
+        },
+        "includeDocumentMetadata": false,
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.vectorStoreQdrant",
+      "typeVersion": 1.3,
+      "position": [
+        -416,
+        560
+      ],
+      "id": "b673223d-1879-4de1-8d4f-ab1a43c6284d",
+      "name": "GetDiscount",
+      "credentials": {
+        "qdrantApi": {
+          "id": "txgudyUaUXbLbTDH",
+          "name": "QdrantApi account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "model": "mxbai-embed-large:latest"
+      },
+      "type": "@n8n/n8n-nodes-langchain.embeddingsOllama",
+      "typeVersion": 1,
+      "position": [
+        -416,
+        736
+      ],
+      "id": "cd39e562-281f-4ea2-a707-bed3c0214ad7",
+      "name": "Embeddings Ollama1",
+      "credentials": {
+        "ollamaApi": {
+          "id": "WoDmrwBfMygWnhYW",
+          "name": "Ollama account"
+        }
+      }
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "MedicineRAG": {
+      "ai_tool": [
+        [
+          {
+            "node": "MCP Server Trigger",
+            "type": "ai_tool",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "DiscountPrice": {
+      "ai_tool": [
+        [
+          {
+            "node": "MCP Server Trigger",
+            "type": "ai_tool",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Embeddings Ollama": {
+      "ai_embedding": [
+        [
+          {
+            "node": "MedicineRAG",
+            "type": "ai_embedding",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "GetDiscount": {
+      "ai_tool": [
+        [
+          {
+            "node": "MCP Server Trigger",
+            "type": "ai_tool",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Embeddings Ollama1": {
+      "ai_embedding": [
+        [
+          {
+            "node": "GetDiscount",
+            "type": "ai_embedding",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": true,
+  "settings": {
+    "executionOrder": "v1",
+    "callerPolicy": "workflowsFromSameOwner",
+    "executionTimeout": -1,
+    "errorWorkflow": "T5Rkiguv3leIMS0z"
+  },
+  "versionId": "67188c16-90b8-4673-a782-c5fd2b05c51b",
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "8ee5f35f708acf51f9c28bb32aed7be69ebfe8c962cbef4b6b25d6b58956bf7d"
+  },
+  "id": "6hk0kOQAaV8gXGOl",
+  "tags": []
+}

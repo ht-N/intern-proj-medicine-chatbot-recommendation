@@ -1,0 +1,171 @@
+{
+  "name": "MCP_server",
+  "nodes": [
+    {
+      "parameters": {
+        "path": "htn-mcp"
+      },
+      "type": "@n8n/n8n-nodes-langchain.mcpTrigger",
+      "typeVersion": 2,
+      "position": [
+        -272,
+        -80
+      ],
+      "id": "2d7ccb25-a99f-449e-a819-3a2219394aed",
+      "name": "MCP Server Trigger",
+      "webhookId": "16424b13-11db-4e28-82c1-56fb23067e73"
+    },
+    {
+      "parameters": {
+        "modelName": "embed-english-v3.0"
+      },
+      "type": "@n8n/n8n-nodes-langchain.embeddingsCohere",
+      "typeVersion": 1,
+      "position": [
+        -448,
+        336
+      ],
+      "id": "f7546b67-7371-4f2d-9ff5-f1f0b6304118",
+      "name": "Embeddings Cohere1",
+      "credentials": {
+        "cohereApi": {
+          "id": "IlYyiDCP7tlTHvBW",
+          "name": "CohereApi account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "mode": "retrieve-as-tool",
+        "toolDescription": "Looking for products for customer.",
+        "qdrantCollection": {
+          "__rl": true,
+          "value": "rag-medicine",
+          "mode": "id"
+        },
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.vectorStoreQdrant",
+      "typeVersion": 1.3,
+      "position": [
+        -448,
+        160
+      ],
+      "id": "d183ae12-d018-41ae-a990-974092ebe39d",
+      "name": "MedicineRAG",
+      "credentials": {
+        "qdrantApi": {
+          "id": "txgudyUaUXbLbTDH",
+          "name": "QdrantApi account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "mode": "retrieve-as-tool",
+        "toolDescription": "Get information about current promotion, discount, ...",
+        "qdrantCollection": {
+          "__rl": true,
+          "value": "rag-promotion",
+          "mode": "id"
+        },
+        "topK": 1000,
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.vectorStoreQdrant",
+      "typeVersion": 1.3,
+      "position": [
+        -176,
+        160
+      ],
+      "id": "9389b1a4-653b-4984-8054-375e1455460f",
+      "name": "PromotionRAG",
+      "credentials": {
+        "qdrantApi": {
+          "id": "txgudyUaUXbLbTDH",
+          "name": "QdrantApi account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "description": "Calculate the applied promotion/discount price for an item",
+        "language": "python",
+        "pythonCode": "results = []\n\n# Dùng to_py() để convert JsProxy -> Python dict\nfor _item in _items.to_py():\n    price = _item[\"json\"][\"price\"]\n    discount_percentage = _item[\"json\"][\"discount_percentage\"]\n\n    # Nếu discount là chuỗi \"5%\" thì xử lý\n    if isinstance(discount_percentage, str) and discount_percentage.endswith(\"%\"):\n        discount_percentage = float(discount_percentage.replace(\"%\", \"\"))\n    else:\n        discount_percentage = float(discount_percentage)\n\n    discount_price = price - (price * (discount_percentage / 100))\n\n    results.append({\n        \"json\": {\n            \"price\": price,\n            \"discount_percentage\": discount_percentage,\n            \"discount_price\": discount_price\n        }\n    })\n\nreturn results\n",
+        "specifyInputSchema": true,
+        "jsonSchemaExample": "{\n\t\"price\": 30,\n    \"discount_percentage\": 5\n}"
+      },
+      "type": "@n8n/n8n-nodes-langchain.toolCode",
+      "typeVersion": 1.3,
+      "position": [
+        208,
+        176
+      ],
+      "id": "ce0c9554-3179-4667-a3e6-f36a0de69925",
+      "name": "DiscountPrice"
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "Embeddings Cohere1": {
+      "ai_embedding": [
+        [
+          {
+            "node": "MedicineRAG",
+            "type": "ai_embedding",
+            "index": 0
+          },
+          {
+            "node": "PromotionRAG",
+            "type": "ai_embedding",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "MedicineRAG": {
+      "ai_tool": [
+        [
+          {
+            "node": "MCP Server Trigger",
+            "type": "ai_tool",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "PromotionRAG": {
+      "ai_tool": [
+        [
+          {
+            "node": "MCP Server Trigger",
+            "type": "ai_tool",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "DiscountPrice": {
+      "ai_tool": [
+        [
+          {
+            "node": "MCP Server Trigger",
+            "type": "ai_tool",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "versionId": "24b2d51d-94f3-4ea3-bdeb-d5545d04b4ad",
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "8ee5f35f708acf51f9c28bb32aed7be69ebfe8c962cbef4b6b25d6b58956bf7d"
+  },
+  "id": "6hk0kOQAaV8gXGOl",
+  "tags": []
+}
